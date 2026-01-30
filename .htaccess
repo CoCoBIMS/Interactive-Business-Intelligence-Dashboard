@@ -1,18 +1,14 @@
 # Apache .htaccess for Cortina Consult Dashboards
 # ==================================================
-# IMPORTANT: Update AuthUserFile path to match your server!
+# Authentication required for ALL files
 # ==================================================
 
 # Enable authentication for all files
 AuthType Basic
 AuthName "Cortina Consult - Geschuetzter Bereich"
 
-# !! CHANGE THIS PATH TO YOUR SERVER'S ABSOLUTE PATH !!
-# Example paths:
-#   Linux: /var/www/html/dashboards/.htpasswd
-#   macOS: /Users/username/Sites/dashboards/.htpasswd
-#   Windows: C:/xampp/htdocs/dashboards/.htpasswd
-AuthUserFile ${DOCUMENT_ROOT}/.htpasswd
+# Absolute path to .htpasswd file on server
+AuthUserFile /var/www/html/.htpasswd
 
 Require valid-user
 

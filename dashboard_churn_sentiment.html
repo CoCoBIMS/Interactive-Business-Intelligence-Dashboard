@@ -153,6 +153,13 @@
                         </select>
                     </div>
                     <div>
+                        <label class="text-sm text-gray-600">Jira:</label>
+                        <select id="jiraFilter" class="ml-2 px-3 py-1 border rounded text-sm">
+                            <option value="jira">Nur Jira-Kunden</option>
+                            <option value="">Alle</option>
+                        </select>
+                    </div>
+                    <div>
                         <label class="text-sm text-gray-600">Sortieren:</label>
                         <select id="sortBy" class="ml-2 px-3 py-1 border rounded text-sm">
                             <option value="risk_desc">Risiko (absteigend)</option>
@@ -222,6 +229,7 @@
         const DATA_FILE = 'churn_sentiment_analysis.csv';
         const REFRESH_INTERVAL = 60 * 60 * 1000; // 1 hour in ms
         const ITEMS_PER_PAGE = 25;
+        const JIRA_BASE_URL = 'https://cocobo.atlassian.net/browse/';
 
         // State
         let allData = [];
@@ -335,7 +343,10 @@
                     <div class="flex justify-between items-start">
                         <div>
                             <div class="font-semibold">${c.client_name || c.epic_schluessel}</div>
-                            <div class="text-sm text-gray-500">${c.epic_schluessel}</div>
+                            <a href="${JIRA_BASE_URL}${c.epic_schluessel}" target="_blank"
+                               class="text-sm text-blue-600 hover:text-blue-800 hover:underline">
+                               ${c.epic_schluessel} ↗
+                            </a>
                         </div>
                         <div class="text-2xl font-bold ${
                             c.churn_risk_score >= 80 ? 'text-red-600' :
@@ -451,6 +462,7 @@
             const status = document.getElementById('statusFilter').value;
             const phase = document.getElementById('phaseFilter').value;
             const churned = document.getElementById('churnedFilter').value;
+            const jiraFilter = document.getElementById('jiraFilter').value;
             const sortBy = document.getElementById('sortBy').value;
 
             filteredData = allData.filter(c => {
@@ -468,6 +480,10 @@
                     return false;
                 }
                 if (churned === 'churned' && c.ist_churned !== true && c.ist_churned !== 'True') {
+                    return false;
+                }
+                // Jira filter - only show clients with Jira data
+                if (jiraFilter === 'jira' && (c.has_jira_data !== true && c.has_jira_data !== 'True')) {
                     return false;
                 }
                 return true;
@@ -503,7 +519,15 @@
                 row.innerHTML = `
                     <td class="px-4 py-3">
                         <div class="font-medium">${c.client_name || c.epic_schluessel}</div>
-                        <div class="text-xs text-gray-500">${c.epic_schluessel}</div>
+                        <div class="text-xs">
+                            <a href="${JIRA_BASE_URL}${c.epic_schluessel}" target="_blank"
+                               onclick="event.stopPropagation();"
+                               class="text-blue-600 hover:text-blue-800 hover:underline">
+                               ${c.epic_schluessel}
+                            </a>
+                            ${(c.has_jira_data === true || c.has_jira_data === 'True') ?
+                                '<span class="ml-1 text-green-600" title="Hat Jira-Daten">J</span>' : ''}
+                        </div>
                         ${isChurned ? '<span class="text-xs bg-gray-200 text-gray-600 px-2 py-0.5 rounded">Churned</span>' : ''}
                     </td>
                     <td class="px-4 py-3">
@@ -563,7 +587,12 @@
                 <div class="flex justify-between items-start mb-6">
                     <div>
                         <h2 class="text-xl font-bold">${client.client_name || client.epic_schluessel}</h2>
-                        <p class="text-gray-500">${client.epic_schluessel}</p>
+                        <p>
+                            <a href="${JIRA_BASE_URL}${client.epic_schluessel}" target="_blank"
+                               class="text-blue-600 hover:text-blue-800 hover:underline">
+                               ${client.epic_schluessel} ↗
+                            </a>
+                        </p>
                         ${isChurned ? '<span class="bg-gray-200 text-gray-700 px-2 py-1 rounded text-sm">Bereits Churned</span>' : ''}
                     </div>
                     <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
@@ -676,8 +705,9 @@
                 createCharts();
                 updateTopRisks();
 
-                // Setup default filter (active only)
+                // Setup default filters (active only, Jira only)
                 document.getElementById('churnedFilter').value = 'active';
+                document.getElementById('jiraFilter').value = 'jira';
                 applyFilters();
 
                 document.getElementById('lastUpdate').textContent =
@@ -698,7 +728,7 @@
 
         // Setup event listeners
         function setupEventListeners() {
-            ['searchInput', 'statusFilter', 'phaseFilter', 'churnedFilter', 'sortBy'].forEach(id => {
+            ['searchInput', 'statusFilter', 'phaseFilter', 'churnedFilter', 'jiraFilter', 'sortBy'].forEach(id => {
                 document.getElementById(id).addEventListener('change', applyFilters);
                 document.getElementById(id).addEventListener('input', applyFilters);
             });
