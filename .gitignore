@@ -1,0 +1,24 @@
+# Authentication - NEVER commit!
+.htpasswd
+
+# Actual data files - contain client data!
+data/bi_reports/*.csv
+data/*.csv
+!data/examples/
+
+# Logs
+logs/*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Backup files
+*.bak
+*.backup

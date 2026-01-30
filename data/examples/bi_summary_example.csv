@@ -1,0 +1,6 @@
+Kategorie,Label,Stunden,Umsatz_EUR,Einträge,Umsatzrelevant,Abrechnungsart
+a,Bereitstellung (a),5.25,0,7,Nein,inclusive
+av,AVV-Prüfung (av),1.5,0,2,Nein,inclusive
+b,Beratung nach Aufwand (b),194.0,25955.0,202,Ja,hourly
+c,Projekte/Budget (c),87.0,12247.5,89,Ja,prepaid
+unknown,Nicht kategorisiert,15.25,827.5,31,Nein,unknown

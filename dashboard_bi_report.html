@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clockodo BI Report Dashboard - Cortina Consult</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+    <style>
+        .status-ok { background-color: #10b981; }
+        .status-warning { background-color: #f59e0b; }
+        .status-critical { background-color: #ef4444; }
+        .card { @apply bg-white rounded-lg shadow-md p-6; }
+        .metric-value { @apply text-3xl font-bold text-gray-800; }
+        .metric-label { @apply text-sm text-gray-500 uppercase tracking-wide; }
+        .table-header { @apply bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider; }
+        .table-row:hover { @apply bg-blue-50; }
+        @keyframes pulse-dot { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+        .pulse-dot { animation: pulse-dot 2s infinite; }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <!-- Header -->
+    <header class="bg-gradient-to-r from-blue-600 to-blue-800 text-white shadow-lg">
+        <div class="container mx-auto px-6 py-4">
+            <div class="flex justify-between items-center">
+                <div>
+                    <h1 class="text-2xl font-bold">Clockodo BI Report</h1>
+                    <p class="text-blue-200 text-sm">Cortina Consult GmbH</p>
+                </div>
+                <div class="text-right">
+                    <div class="flex items-center gap-2">
+                        <span class="w-2 h-2 bg-green-400 rounded-full pulse-dot"></span>
+                        <span id="lastUpdate" class="text-sm">Lädt...</span>
+                    </div>
+                    <p id="periodInfo" class="text-blue-200 text-sm"></p>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="container mx-auto px-6 py-8">
+        <!-- Loading indicator -->
+        <div id="loading" class="text-center py-12">
+            <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+            <p class="mt-4 text-gray-600">Daten werden geladen...</p>
+        </div>
+
+        <!-- Error message -->
+        <div id="error" class="hidden bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6">
+            <strong>Fehler:</strong> <span id="errorMsg"></span>
+        </div>
+
+        <!-- Dashboard content -->
+        <div id="dashboard" class="hidden">
+            <!-- Summary Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                <div class="card">
+                    <div class="metric-label">Umsatz Gesamt</div>
+                    <div class="metric-value text-green-600" id="totalRevenue">-</div>
+                    <div class="text-sm text-gray-500 mt-2">
+                        <span id="revenueB">-</span> Beratung + <span id="revenueC">-</span> Budget
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="metric-label">Stunden Gesamt</div>
+                    <div class="metric-value text-blue-600" id="totalHours">-</div>
+                    <div class="text-sm text-gray-500 mt-2" id="hoursBreakdown">-</div>
+                </div>
+                <div class="card">
+                    <div class="metric-label">Auslastung Ø</div>
+                    <div class="metric-value" id="avgUtilization">-</div>
+                    <div class="text-sm text-gray-500 mt-2" id="utilizationDetails">-</div>
+                </div>
+                <div class="card">
+                    <div class="metric-label">Kunden aktiv</div>
+                    <div class="metric-value text-purple-600" id="activeCustomers">-</div>
+                    <div class="text-sm text-gray-500 mt-2" id="customersWithRevenue">-</div>
+                </div>
+            </div>
+
+            <!-- Charts Row -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                <div class="card">
+                    <h2 class="text-lg font-semibold mb-4">Stunden nach Kategorie</h2>
+                    <canvas id="hoursChart" height="200"></canvas>
+                </div>
+                <div class="card">
+                    <h2 class="text-lg font-semibold mb-4">Umsatz nach Kategorie</h2>
+                    <canvas id="revenueChart" height="200"></canvas>
+                </div>
+            </div>
+
+            <!-- Forecast Card -->
+            <div class="card mb-8">
+                <h2 class="text-lg font-semibold mb-4">Monats-Forecast</h2>
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4" id="forecastGrid">
+                    <!-- Filled by JS -->
+                </div>
+            </div>
+
+            <!-- Employee Table -->
+            <div class="card mb-8">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-lg font-semibold">Mitarbeiter Übersicht</h2>
+                    <div class="flex gap-2">
+                        <input type="text" id="employeeSearch" placeholder="Suchen..."
+                               class="px-3 py-1 border rounded text-sm">
+                    </div>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm">
+                        <thead>
+                            <tr class="table-header">
+                                <th class="px-4 py-3">Mitarbeiter</th>
+                                <th class="px-4 py-3 text-right">Stunden Gesamt</th>
+                                <th class="px-4 py-3 text-right">Umsatz (b)</th>
+                                <th class="px-4 py-3 text-right">Budget (c)</th>
+                                <th class="px-4 py-3 text-right">Soll</th>
+                                <th class="px-4 py-3 text-right">Ist</th>
+                                <th class="px-4 py-3 text-right">Auslastung</th>
+                                <th class="px-4 py-3 text-right">Deckungsbeitrag</th>
+                            </tr>
+                        </thead>
+                        <tbody id="employeeTable">
+                            <!-- Filled by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Customer Table -->
+            <div class="card mb-8">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-lg font-semibold">Kunden Übersicht</h2>
+                    <div class="flex gap-2">
+                        <input type="text" id="customerSearch" placeholder="Suchen..."
+                               class="px-3 py-1 border rounded text-sm">
+                        <select id="customerSort" class="px-3 py-1 border rounded text-sm">
+                            <option value="revenue">Nach Umsatz</option>
+                            <option value="hours">Nach Stunden</option>
+                            <option value="name">Nach Name</option>
+                            <option value="db">Nach Deckungsbeitrag</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="overflow-x-auto max-h-96 overflow-y-auto">
+                    <table class="w-full text-sm">
+                        <thead class="sticky top-0 bg-white">
+                            <tr class="table-header">
+                                <th class="px-4 py-3">Kunde</th>
+                                <th class="px-4 py-3 text-right">Pauschale (a/av)</th>
+                                <th class="px-4 py-3 text-right">Beratung (b)</th>
+                                <th class="px-4 py-3 text-right">Kontingent (c)</th>
+                                <th class="px-4 py-3 text-right">Stunden</th>
+                                <th class="px-4 py-3 text-right">Umsatz</th>
+                                <th class="px-4 py-3 text-right">Deckungsbeitrag</th>
+                                <th class="px-4 py-3 text-right">DB %</th>
+                            </tr>
+                        </thead>
+                        <tbody id="customerTable">
+                            <!-- Filled by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Pauschalen Deckung Table -->
+            <div class="card mb-8">
+                <h2 class="text-lg font-semibold mb-4">Pauschalen-Deckung</h2>
+                <div class="overflow-x-auto max-h-64 overflow-y-auto">
+                    <table class="w-full text-sm">
+                        <thead class="sticky top-0 bg-white">
+                            <tr class="table-header">
+                                <th class="px-4 py-3">Kunde</th>
+                                <th class="px-4 py-3 text-right">Pauschale EUR</th>
+                                <th class="px-4 py-3 text-right">Inklusiv-Stunden</th>
+                                <th class="px-4 py-3 text-right">Interne Kosten</th>
+                                <th class="px-4 py-3 text-right">Deckung EUR</th>
+                                <th class="px-4 py-3 text-right">Deckung %</th>
+                            </tr>
+                        </thead>
+                        <tbody id="pauschalenTable">
+                            <!-- Filled by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-gray-800 text-gray-400 py-4 mt-8">
+        <div class="container mx-auto px-6 text-center text-sm">
+            <p>Auto-Refresh alle 60 Minuten | Datenquelle: Clockodo BI Reports</p>
+            <p class="mt-1">Cortina Consult GmbH</p>
+        </div>
+    </footer>
+
+    <script>
+        // Configuration
+        const API_URL = 'api.php';  // PHP API for secure data access
+        const REFRESH_INTERVAL = 60 * 60 * 1000; // 1 hour in ms
+
+        // State
+        let summaryData = [];
+        let kundenData = [];
+        let mitarbeiterData = [];
+        let forecastData = [];
+        let pauschalenData = [];
+        let hoursChart = null;
+        let revenueChart = null;
+
+        // Find latest report files via PHP API
+        async function findLatestReport() {
+            try {
+                const response = await fetch(`${API_URL}?action=list_bi_reports`);
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.reports && data.reports.length > 0) {
+                        return data.reports[0].pattern; // Most recent report
+                    }
+                }
+            } catch (e) {
+                console.error('Error fetching report list:', e);
+            }
+
+            // Fallback: try current month pattern
+            const today = new Date();
+            const year = today.getFullYear();
+            const month = String(today.getMonth() + 1).padStart(2, '0');
+            const lastDay = new Date(year, today.getMonth() + 1, 0).getDate();
+            return `${year}${month}01_${year}${month}${String(lastDay).padStart(2, '0')}`;
+        }
+
+        // Parse CSV using PapaParse
+        function parseCSV(text) {
+            const result = Papa.parse(text, {
+                header: true,
+                skipEmptyLines: true,
+                dynamicTyping: true
+            });
+            return result.data;
+        }
+
+        // Fetch CSV file via PHP API
+        async function fetchCSV(filepath) {
+            const response = await fetch(`${API_URL}?file=${encodeURIComponent(filepath)}`);
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`Konnte ${filepath} nicht laden: ${response.status}`);
+            }
+            const text = await response.text();
+            return parseCSV(text);
+        }
+
+        // Format currency
+        function formatCurrency(value) {
+            if (value === null || value === undefined || isNaN(value)) return '-';
+            return new Intl.NumberFormat('de-DE', {
+                style: 'currency',
+                currency: 'EUR',
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 0
+            }).format(value);
+        }
+
+        // Format number
+        function formatNumber(value, decimals = 1) {
+            if (value === null || value === undefined || isNaN(value)) return '-';
+            return new Intl.NumberFormat('de-DE', {
+                minimumFractionDigits: decimals,
+                maximumFractionDigits: decimals
+            }).format(value);
+        }
+
+        // Format percent
+        function formatPercent(value) {
+            if (value === null || value === undefined || isNaN(value)) return '-';
+            return `${formatNumber(value, 1)}%`;
+        }
+
+        // Get color based on utilization
+        function getUtilizationColor(value) {
+            if (value >= 80) return 'text-green-600';
+            if (value >= 50) return 'text-yellow-600';
+            return 'text-red-600';
+        }
+
+        // Get color based on DB percent
+        function getDBColor(value) {
+            if (value >= 15) return 'text-green-600';
+            if (value >= 0) return 'text-yellow-600';
+            return 'text-red-600';
+        }
+
+        // Update summary cards
+        function updateSummaryCards() {
+            // Find totals from summary data
+            const bData = summaryData.find(r => r.Kategorie === 'b') || {};
+            const cData = summaryData.find(r => r.Kategorie === 'c') || {};
+            const totalRevenue = (bData.Umsatz_EUR || 0) + (cData.Umsatz_EUR || 0);
+            const totalHours = summaryData.reduce((sum, r) => sum + (r.Stunden || 0), 0);
+
+            document.getElementById('totalRevenue').textContent = formatCurrency(totalRevenue);
+            document.getElementById('revenueB').textContent = formatCurrency(bData.Umsatz_EUR || 0);
+            document.getElementById('revenueC').textContent = formatCurrency(cData.Umsatz_EUR || 0);
+            document.getElementById('totalHours').textContent = `${formatNumber(totalHours)} h`;
+            document.getElementById('hoursBreakdown').textContent =
+                `${formatNumber(bData.Stunden || 0)}h Beratung + ${formatNumber(cData.Stunden || 0)}h Budget`;
+
+            // Calculate average utilization from employees
+            const employees = mitarbeiterData.filter(e => e.Auslastung_Prozent > 0);
+            const avgUtil = employees.length > 0
+                ? employees.reduce((sum, e) => sum + (e.Auslastung_Prozent || 0), 0) / employees.length
+                : 0;
+
+            document.getElementById('avgUtilization').textContent = formatPercent(avgUtil);
+            document.getElementById('avgUtilization').className = `metric-value ${getUtilizationColor(avgUtil)}`;
+            document.getElementById('utilizationDetails').textContent = `${employees.length} Mitarbeiter`;
+
+            // Count active customers
+            const activeCustomers = kundenData.filter(c => c.Stunden_gesamt > 0).length;
+            const customersWithRevenue = kundenData.filter(c => c.Umsatz_Gesamt > 0).length;
+
+            document.getElementById('activeCustomers').textContent = activeCustomers;
+            document.getElementById('customersWithRevenue').textContent = `${customersWithRevenue} mit Umsatz`;
+        }
+
+        // Create charts
+        function createCharts() {
+            const categories = summaryData.map(r => r.Label || r.Kategorie);
+            const hours = summaryData.map(r => r.Stunden || 0);
+            const revenue = summaryData.map(r => r.Umsatz_EUR || 0);
+
+            const colors = {
+                'a': '#3b82f6',      // blue
+                'av': '#8b5cf6',     // purple
+                'b': '#10b981',      // green
+                'c': '#f59e0b',      // amber
+                'unknown': '#6b7280' // gray
+            };
+
+            const bgColors = summaryData.map(r => colors[r.Kategorie] || '#6b7280');
+
+            // Hours Chart
+            const hoursCtx = document.getElementById('hoursChart').getContext('2d');
+            if (hoursChart) hoursChart.destroy();
+            hoursChart = new Chart(hoursCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: categories,
+                    datasets: [{
+                        data: hours,
+                        backgroundColor: bgColors,
+                        borderWidth: 2,
+                        borderColor: '#fff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: { position: 'right' },
+                        tooltip: {
+                            callbacks: {
+                                label: (ctx) => `${ctx.label}: ${formatNumber(ctx.raw)} h`
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Revenue Chart
+            const revenueCtx = document.getElementById('revenueChart').getContext('2d');
+            if (revenueChart) revenueChart.destroy();
+            revenueChart = new Chart(revenueCtx, {
+                type: 'bar',
+                data: {
+                    labels: categories,
+                    datasets: [{
+                        label: 'Umsatz EUR',
+                        data: revenue,
+                        backgroundColor: bgColors,
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: (ctx) => formatCurrency(ctx.raw)
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: (value) => formatCurrency(value)
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Update forecast grid
+        function updateForecast() {
+            const grid = document.getElementById('forecastGrid');
+            grid.innerHTML = forecastData.map(row => `
+                <div class="bg-gray-50 rounded p-4">
+                    <div class="text-sm text-gray-500">${row.Metrik}</div>
+                    <div class="text-xl font-semibold">${
+                        row.Einheit === 'EUR' ? formatCurrency(row.Hochrechnung_Monatsende) :
+                        row.Einheit === 'Prozent' ? formatPercent(row.Hochrechnung_Monatsende) :
+                        row.Einheit === 'h' ? `${formatNumber(row.Hochrechnung_Monatsende)} h` :
+                        formatNumber(row.Hochrechnung_Monatsende)
+                    }</div>
+                    <div class="text-xs text-gray-400">Aktuell: ${
+                        row.Einheit === 'EUR' ? formatCurrency(row.Aktuell) :
+                        row.Einheit === 'Prozent' ? formatPercent(row.Aktuell) :
+                        formatNumber(row.Aktuell)
+                    }</div>
+                </div>
+            `).join('');
+        }
+
+        // Update employee table
+        function updateEmployeeTable(searchTerm = '') {
+            const tbody = document.getElementById('employeeTable');
+            const filtered = mitarbeiterData.filter(e =>
+                !searchTerm || e.Mitarbeiter.toLowerCase().includes(searchTerm.toLowerCase())
+            );
+
+            tbody.innerHTML = filtered.map(e => `
+                <tr class="table-row border-b">
+                    <td class="px-4 py-3 font-medium">${e.Mitarbeiter}</td>
+                    <td class="px-4 py-3 text-right">${formatNumber(e.Stunden_gesamt)} h</td>
+                    <td class="px-4 py-3 text-right">${formatCurrency(e.Umsatz_nach_Aufwand_b)}</td>
+                    <td class="px-4 py-3 text-right">${formatCurrency(e.Budget_Verbrauch_c)}</td>
+                    <td class="px-4 py-3 text-right">${formatNumber(e.Soll_Stunden)} h</td>
+                    <td class="px-4 py-3 text-right">${formatNumber(e.Ist_Stunden)} h</td>
+                    <td class="px-4 py-3 text-right">
+                        <span class="${getUtilizationColor(e.Auslastung_Prozent)} font-semibold">
+                            ${formatPercent(e.Auslastung_Prozent)}
+                        </span>
+                    </td>
+                    <td class="px-4 py-3 text-right">
+                        <span class="${getDBColor(e.Deckungsbeitrag)}">
+                            ${formatCurrency(e.Deckungsbeitrag)}
+                        </span>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        // Update customer table
+        function updateCustomerTable(searchTerm = '', sortBy = 'revenue') {
+            const tbody = document.getElementById('customerTable');
+            let filtered = kundenData.filter(c =>
+                !searchTerm || c.Kunde.toLowerCase().includes(searchTerm.toLowerCase())
+            );
+
+            // Sort
+            filtered.sort((a, b) => {
+                switch(sortBy) {
+                    case 'hours': return (b.Stunden_gesamt || 0) - (a.Stunden_gesamt || 0);
+                    case 'name': return a.Kunde.localeCompare(b.Kunde);
+                    case 'db': return (b.Deckungsbeitrag || 0) - (a.Deckungsbeitrag || 0);
+                    default: return (b.Umsatz_Gesamt || 0) - (a.Umsatz_Gesamt || 0);
+                }
+            });
+
+            tbody.innerHTML = filtered.map(c => `
+                <tr class="table-row border-b">
+                    <td class="px-4 py-3 font-medium">${c.Kunde}</td>
+                    <td class="px-4 py-3 text-right">${formatNumber(c.Stunden_Pauschale_a_av)} h</td>
+                    <td class="px-4 py-3 text-right">${formatNumber(c.Stunden_Beratung_b)} h</td>
+                    <td class="px-4 py-3 text-right">${formatNumber(c.Stunden_Kontingent_c)} h</td>
+                    <td class="px-4 py-3 text-right">${formatNumber(c.Stunden_gesamt)} h</td>
+                    <td class="px-4 py-3 text-right font-semibold">${formatCurrency(c.Umsatz_Gesamt)}</td>
+                    <td class="px-4 py-3 text-right">
+                        <span class="${getDBColor(c.Deckungsbeitrag_Prozent)}">
+                            ${formatCurrency(c.Deckungsbeitrag)}
+                        </span>
+                    </td>
+                    <td class="px-4 py-3 text-right">
+                        <span class="${getDBColor(c.Deckungsbeitrag_Prozent)} font-semibold">
+                            ${formatPercent(c.Deckungsbeitrag_Prozent)}
+                        </span>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        // Update pauschalen table
+        function updatePauschalenTable() {
+            const tbody = document.getElementById('pauschalenTable');
+            const sorted = [...pauschalenData].sort((a, b) =>
+                (b.Pauschale_EUR || 0) - (a.Pauschale_EUR || 0)
+            );
+
+            tbody.innerHTML = sorted.slice(0, 50).map(p => `
+                <tr class="table-row border-b">
+                    <td class="px-4 py-3">${p.Kunde}</td>
+                    <td class="px-4 py-3 text-right">${formatCurrency(p.Pauschale_EUR)}</td>
+                    <td class="px-4 py-3 text-right">${formatNumber(p.Stunden_Inklusiv)} h</td>
+                    <td class="px-4 py-3 text-right">${formatCurrency(p.Interne_Kosten_EUR)}</td>
+                    <td class="px-4 py-3 text-right font-semibold">${formatCurrency(p.Deckung_EUR)}</td>
+                    <td class="px-4 py-3 text-right">
+                        <span class="${getDBColor(p.Deckung_Prozent)} font-semibold">
+                            ${formatPercent(p.Deckung_Prozent)}
+                        </span>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        // Load all data
+        async function loadData() {
+            try {
+                document.getElementById('loading').classList.remove('hidden');
+                document.getElementById('dashboard').classList.add('hidden');
+                document.getElementById('error').classList.add('hidden');
+
+                const datePattern = await findLatestReport();
+                const prefix = `bi_reports/bi_${datePattern}`;
+
+                // Load all CSVs in parallel via PHP API
+                const [summary, kunden, mitarbeiter, forecast, pauschalen] = await Promise.all([
+                    fetchCSV(`${prefix}_summary.csv`),
+                    fetchCSV(`${prefix}_kunden.csv`),
+                    fetchCSV(`${prefix}_mitarbeiter.csv`),
+                    fetchCSV(`${prefix}_forecast.csv`),
+                    fetchCSV(`${prefix}_pauschalen_deckung.csv`).catch(() => [])
+                ]);
+
+                summaryData = summary;
+                kundenData = kunden;
+                mitarbeiterData = mitarbeiter;
+                forecastData = forecast;
+                pauschalenData = pauschalen;
+
+                // Update UI
+                updateSummaryCards();
+                createCharts();
+                updateForecast();
+                updateEmployeeTable();
+                updateCustomerTable();
+                updatePauschalenTable();
+
+                // Update header info
+                const parts = datePattern.split('_');
+                const start = parts[0];
+                const end = parts[1];
+                document.getElementById('periodInfo').textContent =
+                    `Zeitraum: ${start.slice(6,8)}.${start.slice(4,6)}.${start.slice(0,4)} - ${end.slice(6,8)}.${end.slice(4,6)}.${end.slice(0,4)}`;
+                document.getElementById('lastUpdate').textContent =
+                    `Aktualisiert: ${new Date().toLocaleString('de-DE')}`;
+
+                // Show dashboard
+                document.getElementById('loading').classList.add('hidden');
+                document.getElementById('dashboard').classList.remove('hidden');
+
+            } catch (error) {
+                console.error('Error loading data:', error);
+                document.getElementById('loading').classList.add('hidden');
+                document.getElementById('error').classList.remove('hidden');
+                document.getElementById('errorMsg').textContent = error.message;
+            }
+        }
+
+        // Setup event listeners
+        function setupEventListeners() {
+            // Employee search
+            document.getElementById('employeeSearch').addEventListener('input', (e) => {
+                updateEmployeeTable(e.target.value);
+            });
+
+            // Customer search and sort
+            document.getElementById('customerSearch').addEventListener('input', (e) => {
+                updateCustomerTable(e.target.value, document.getElementById('customerSort').value);
+            });
+            document.getElementById('customerSort').addEventListener('change', (e) => {
+                updateCustomerTable(document.getElementById('customerSearch').value, e.target.value);
+            });
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            setupEventListeners();
+            loadData();
+
+            // Auto-refresh every hour
+            setInterval(loadData, REFRESH_INTERVAL);
+        });
+    </script>
+</body>
+</html>

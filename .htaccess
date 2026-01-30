@@ -1,0 +1,51 @@
+# Apache .htaccess for Cortina Consult Dashboards
+# ==================================================
+# IMPORTANT: Update AuthUserFile path to match your server!
+# ==================================================
+
+# Enable authentication for all files
+AuthType Basic
+AuthName "Cortina Consult - Geschuetzter Bereich"
+
+# !! CHANGE THIS PATH TO YOUR SERVER'S ABSOLUTE PATH !!
+# Example paths:
+#   Linux: /var/www/html/dashboards/.htpasswd
+#   macOS: /Users/username/Sites/dashboards/.htpasswd
+#   Windows: C:/xampp/htdocs/dashboards/.htpasswd
+AuthUserFile ${DOCUMENT_ROOT}/.htpasswd
+
+Require valid-user
+
+# Protect .htaccess and .htpasswd files
+<FilesMatch "^\.ht">
+    Require all denied
+</FilesMatch>
+
+# Block direct access to CSV files - must go through api.php
+<FilesMatch "\.csv$">
+    Require all denied
+</FilesMatch>
+
+# Block direct access to data directory
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteBase /
+
+    # Block direct access to /data/
+    RewriteRule ^data/ - [F,L]
+
+    # Redirect root to dashboard index
+    RewriteRule ^$ dashboard_index.html [L]
+</IfModule>
+
+# Fallback if mod_rewrite not available
+<DirectoryMatch "/data/">
+    Require all denied
+</DirectoryMatch>
+
+# Security headers
+<IfModule mod_headers.c>
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set X-Frame-Options "DENY"
+    Header always set X-XSS-Protection "1; mode=block"
+</IfModule>
