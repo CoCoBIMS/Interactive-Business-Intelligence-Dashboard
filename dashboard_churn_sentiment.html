@@ -27,19 +27,19 @@
 </head>
 <body class="bg-gray-100 min-h-screen">
     <!-- Header -->
-    <header class="bg-gradient-to-r from-purple-600 to-purple-800 text-white shadow-lg">
+    <header class="text-white shadow-lg" style="background: linear-gradient(to right, #6c1428, #4a0e1c);">
         <div class="container mx-auto px-6 py-4">
             <div class="flex justify-between items-center">
                 <div>
                     <h1 class="text-2xl font-bold">Churn Sentiment Analyse</h1>
-                    <p class="text-purple-200 text-sm">Kundenabwanderungs-Risiko Dashboard</p>
+                    <p class="text-sm" style="color: #f1e8ea;">Kundenabwanderungs-Risiko Dashboard</p>
                 </div>
                 <div class="text-right">
                     <div class="flex items-center gap-2">
                         <span class="w-2 h-2 bg-green-400 rounded-full pulse-dot"></span>
                         <span id="lastUpdate" class="text-sm">Lädt...</span>
                     </div>
-                    <p id="clientCount" class="text-purple-200 text-sm"></p>
+                    <p id="clientCount" class="text-sm" style="color: #f1e8ea;"></p>
                 </div>
             </div>
         </div>
@@ -48,7 +48,7 @@
     <main class="container mx-auto px-6 py-8">
         <!-- Loading indicator -->
         <div id="loading" class="text-center py-12">
-            <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto"></div>
+            <div class="animate-spin rounded-full h-12 w-12 border-b-2 mx-auto" style="border-color: #6c1428;"></div>
             <p class="mt-4 text-gray-600">Daten werden geladen...</p>
         </div>
 
@@ -61,7 +61,7 @@
         <div id="dashboard" class="hidden">
             <!-- Summary Cards -->
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
-                <div class="bg-white rounded-lg shadow p-4 border-l-4 border-purple-500">
+                <div class="bg-white rounded-lg shadow p-4 border-l-4" style="border-color: #6c1428;">
                     <div class="text-sm text-gray-500 uppercase">Kunden Gesamt</div>
                     <div class="text-2xl font-bold" id="totalClients">-</div>
                     <div class="text-xs text-gray-400 mt-1" id="activeVsChurned">-</div>
@@ -192,7 +192,7 @@
 
             <!-- Pagination/Load More -->
             <div class="text-center mt-6">
-                <button id="loadMoreBtn" class="px-6 py-2 bg-purple-600 text-white rounded hover:bg-purple-700">
+                <button id="loadMoreBtn" class="px-6 py-2 text-white rounded" style="background-color: #6c1428;" onmouseover="this.style.backgroundColor='#4a0e1c'" onmouseout="this.style.backgroundColor='#6c1428'">
                     Mehr laden
                 </button>
             </div>
@@ -209,7 +209,7 @@
     </div>
 
     <!-- Footer -->
-    <footer class="bg-gray-800 text-gray-400 py-4 mt-8">
+    <footer class="py-4 mt-8" style="background-color: #6c1428; color: #f1e8ea;">
         <div class="container mx-auto px-6 text-center text-sm">
             <p>Auto-Refresh alle 60 Minuten | Datenquelle: Churn Sentiment Analyse</p>
             <p class="mt-1">Cortina Consult GmbH</p>

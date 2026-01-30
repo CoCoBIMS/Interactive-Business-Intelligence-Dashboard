@@ -61,7 +61,7 @@ function isAllowedFile($filename, $patterns) {
     $filename = str_replace(['..', "\0"], '', $filename);
 
     foreach ($patterns as $pattern) {
-        if (preg_match('/^' . $pattern . '$/', $filename)) {
+        if (preg_match('#^' . $pattern . '$#', $filename)) {
             return true;
         }
     }

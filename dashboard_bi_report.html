@@ -15,26 +15,26 @@
         .metric-value { @apply text-3xl font-bold text-gray-800; }
         .metric-label { @apply text-sm text-gray-500 uppercase tracking-wide; }
         .table-header { @apply bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider; }
-        .table-row:hover { @apply bg-blue-50; }
+        .table-row:hover { background-color: #f1e8ea; }
         @keyframes pulse-dot { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
         .pulse-dot { animation: pulse-dot 2s infinite; }
     </style>
 </head>
 <body class="bg-gray-100 min-h-screen">
     <!-- Header -->
-    <header class="bg-gradient-to-r from-blue-600 to-blue-800 text-white shadow-lg">
+    <header class="text-white shadow-lg" style="background: linear-gradient(to right, #6c1428, #4a0e1c);">
         <div class="container mx-auto px-6 py-4">
             <div class="flex justify-between items-center">
                 <div>
                     <h1 class="text-2xl font-bold">Clockodo BI Report</h1>
-                    <p class="text-blue-200 text-sm">Cortina Consult GmbH</p>
+                    <p class="text-sm" style="color: #f1e8ea;">Cortina Consult GmbH</p>
                 </div>
                 <div class="text-right">
                     <div class="flex items-center gap-2">
                         <span class="w-2 h-2 bg-green-400 rounded-full pulse-dot"></span>
                         <span id="lastUpdate" class="text-sm">Lädt...</span>
                     </div>
-                    <p id="periodInfo" class="text-blue-200 text-sm"></p>
+                    <p id="periodInfo" class="text-sm" style="color: #f1e8ea;"></p>
                 </div>
             </div>
         </div>
@@ -43,7 +43,7 @@
     <main class="container mx-auto px-6 py-8">
         <!-- Loading indicator -->
         <div id="loading" class="text-center py-12">
-            <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+            <div class="animate-spin rounded-full h-12 w-12 border-b-2 mx-auto" style="border-color: #6c1428;"></div>
             <p class="mt-4 text-gray-600">Daten werden geladen...</p>
         </div>
 
@@ -65,7 +65,7 @@
                 </div>
                 <div class="card">
                     <div class="metric-label">Stunden Gesamt</div>
-                    <div class="metric-value text-blue-600" id="totalHours">-</div>
+                    <div class="metric-value" id="totalHours" style="color: #6c1428;">-</div>
                     <div class="text-sm text-gray-500 mt-2" id="hoursBreakdown">-</div>
                 </div>
                 <div class="card">
@@ -75,7 +75,7 @@
                 </div>
                 <div class="card">
                     <div class="metric-label">Kunden aktiv</div>
-                    <div class="metric-value text-purple-600" id="activeCustomers">-</div>
+                    <div class="metric-value" id="activeCustomers" style="color: #6c1428;">-</div>
                     <div class="text-sm text-gray-500 mt-2" id="customersWithRevenue">-</div>
                 </div>
             </div>
@@ -191,7 +191,7 @@
     </main>
 
     <!-- Footer -->
-    <footer class="bg-gray-800 text-gray-400 py-4 mt-8">
+    <footer class="py-4 mt-8" style="background-color: #6c1428; color: #f1e8ea;">
         <div class="container mx-auto px-6 text-center text-sm">
             <p>Auto-Refresh alle 60 Minuten | Datenquelle: Clockodo BI Reports</p>
             <p class="mt-1">Cortina Consult GmbH</p>
